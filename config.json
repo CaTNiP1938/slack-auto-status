@@ -1,0 +1,9 @@
+{
+    "debug": false,
+    "silentOutput": true,
+    "slackApiTokens":
+    [
+        "<add_your_tokens_here>"
+    ],
+    "statusEmoji": ":computer:"
+}
