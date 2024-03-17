@@ -1,1 +1,5 @@
+# Python cache
+*.pyc
+
+# Config file
 config.json

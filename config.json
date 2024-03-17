@@ -1,9 +1,12 @@
 {
-    "debug": false,
     "silentOutput": true,
     "slackApiTokens":
     [
         "<add_your_tokens_here>"
     ],
-    "statusEmoji": ":computer:"
+    "slackUserIds": [
+        "<add_your_slack_user_ids_here>"
+    ],
+    "statusEmoji": ":computer:",
+    "meetingStatusEmoji": ":calendar:"
 }
