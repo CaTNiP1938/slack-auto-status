@@ -2,26 +2,12 @@
     Contains some utility functions used by the main 'script.py' file
 """
 
-import json
 import re
 
 from datetime import datetime
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
-
-def read_json_file(filename: str) -> Dict[str, any]:
-    """
-    Reads json file into a dictionary
-
-    Parameters:
-    filename: str - The name of the file next to this one
-
-    Returns:
-    The file's content in JSON format
-    """
-
-    with open(filename) as f_in:
-        return json.load(f_in)
+import file
 
 
 def is_input_an_hour(input: str) -> bool:
@@ -265,3 +251,24 @@ def add_new_window(new_window: Tuple[datetime, datetime],
     windows = [tup for tup in windows if tup[0] != tup[1]]
 
     return windows
+
+
+def get_old_status() -> None | str:
+    """
+    Get old status if it exists in the status file
+
+    Parameters:
+    None
+
+    Returns:
+    None, if the status file does not exist or it's not for today.
+    The status message otherwise.
+    """
+
+    old_status = file.read_status_file()
+    current_month = datetime.now().month
+    current_day = datetime.now().day
+    if old_status is not False and old_status[0] == current_month and old_status[1] == current_day:
+        return old_status[2]
+    else:
+        return None

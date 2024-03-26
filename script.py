@@ -2,14 +2,14 @@
     Contains the main runnable file that sets the slack status.
 """
 
-import os.path
-import sys
-
 from datetime import datetime
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 from integrations import slack
+
+import file
 import utils
+
 
 # Global variables
 config = None
@@ -17,27 +17,6 @@ silent_output = None
 status_expiry_date = None
 status_emoji = None
 meeting_status_emoji = None
-
-
-def read_configuration() -> Dict[str, any]:
-    """
-    Checks and reads in configration file
-
-    Returns:
-    Configuration in a dictionary form
-    """
-
-    # Check if config file exists
-    config_path = './config.json'
-    if not os.path.isfile(config_path):
-        print(
-            "Configuration file is not present." +
-            "Please load the 'config.json' file into the directory!"
-        )
-        sys.exit(1)
-
-    # Read config file into a dictionary
-    return utils.read_json_file(config_path)
 
 
 def set_configuration() -> None:
@@ -68,7 +47,7 @@ def create_status_message(time_windows: List[Tuple[datetime, datetime]],
 
     Parameters:
     time_windows: List[Tuple[datetime, datetime]] - The available time windows
-        with breaks createing gaps
+        with breaks creating gaps
     meetings: List[Tuple[datetime, datetime]] - Additional time windows
         representing meetings
 
@@ -254,36 +233,38 @@ def set_slack_status(slack_status: str) -> None:
 if __name__ == '__main__':
 
     # Read and set configuration into the global variables
-    config = read_configuration()
+    config = file.read_configuration()
     set_configuration()
 
     # Set base value for decisions
     input_manually = False
     input_fully_manually = False
 
-    # Check if the user wants to set the status manually
-    # (either fully or by asking for the boundaries, meetings)
-    if utils.get_boolean_input("Do you want to set the status manually?"):
+    # Only ask the base questions if the input is not already done by updating
+    if not input_update:
 
-        # Check if the user wants to set the status fully manually (free text)
-        # or half manually (setting boundaries, meetings with fix time formats)
-        if utils.get_boolean_input(
-                "Do you want to set the status FULLY manually with a free text?"):
-            status_message = utils.get_text_input("Add the fix status message you want to set:")
+        # Check if the user wants to set the status manually
+        # (either fully or by asking for the boundaries, meetings)
+        if utils.get_boolean_input("Do you want to set the status manually?"):
+
+            # Check if the user wants to set the status fully manually (free text)
+            # or half manually (setting boundaries, meetings with fix time formats)
+            if utils.get_boolean_input(
+                    "Do you want to set the status FULLY manually with a free text?"):
+                status_message = utils.get_text_input("Add the fix status message you want to set:")
+            else:
+                status_message = get_half_manual_input()
+
+        # Fully automated status: boundaries are set based on time,
+        # meetings are based on config + integration
         else:
-            status_message = get_half_manual_input()
-
-    # Fully automated status: boundaries are set based on time,
-    # meetings are based on config + integration
-    else:
-        raise NotImplementedError()
+            raise NotImplementedError()
 
     # TODO: Remove these
     print('')
     print("The final status message will be:")
     print(status_message)
     print('')
-    # sys.exit(0)
 
     # Set the final status to all workspaces
-    # set_slack_status(status_message)
+    set_slack_status(status_message)
