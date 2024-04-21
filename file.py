@@ -8,7 +8,7 @@ import sys
 
 from typing import Dict
 
-CONFIG_FILE_PATH = './config.json'
+CONFIG_FILE_PATH = 'config.json'
 
 
 def read_configuration() -> Dict[str, any]:
@@ -19,16 +19,20 @@ def read_configuration() -> Dict[str, any]:
     Configuration in a dictionary form
     """
 
+    # Construct absolute path by using this script's location
+    script_dir = os.path.dirname(__file__)
+    abs_file_path = os.path.join(script_dir, CONFIG_FILE_PATH)
+
     # Check if config file exists
-    if not os.path.isfile(CONFIG_FILE_PATH):
+    if not os.path.isfile(abs_file_path):
         print(
-            "Configuration file is not present." +
+            "Configuration file is not present. " +
             "Please load the 'config.json' file into the directory!"
         )
         sys.exit(1)
 
     # Read config file into a dictionary
-    return read_json_file(CONFIG_FILE_PATH)
+    return read_json_file(abs_file_path)
 
 
 def read_json_file(filename: str) -> Dict[str, any]:
