@@ -2,10 +2,10 @@
     Contains the main runnable file that sets the slack status.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Tuple
 
-from integrations import slack
+from integrations import azure_teams, google_calendar, slack
 
 import file
 import utils
@@ -101,25 +101,67 @@ def get_half_manual_input() -> str:
     # this will be present in the slack status before the meetings' listing
     time_windows = []
 
-    # Get start time as python datetime
-    start_time = utils.get_hour_input(
-        'Set the starting time of the status',
-        available_windows
-    )
+    # Get start and end time - ask if we want to get it automatically
+    if utils.get_boolean_input("Would you like to add start and end time automatically? " +
+            "(starts from next 15 minutes, ends in + 8:30 hours)"):
 
-    # Get end time as python datetime
-    end_time = utils.get_hour_input(
-        'Set the ending time of the status',
-        available_windows,
-        after_than=start_time
-    )
+        # Round to next 15 minutes
+        now = datetime.now()
+        if now.minute > 0 and now.minute <= 15:
+            start_time = now.replace(minute=15)
+        elif now.minute > 15 and now.minute <= 30:
+            start_time = now.replace(minute=30)
+        elif now.minute > 30 and now.minute <= 45:
+            start_time = now.replace(minute=45)
+        elif now.minute > 45 or now.minute == 0:
+            start_time = now.replace(minute=0) + timedelta(hours=1)
+        else:
+            raise Exception(f"Unknown case for minute: {now.minute}")
+
+        # End time: start + 8 and a half hours
+        end_time = start_time + timedelta(hours=8, minutes=30)
+
+    else:
+        # Get start time as python datetime
+        start_time = utils.get_hour_input(
+            'Set the starting time of the status',
+            available_windows
+        )
+
+        # Get end time as python datetime
+        end_time = utils.get_hour_input(
+            'Set the ending time of the status',
+            available_windows,
+            after_than=start_time
+        )
 
     # Add the set limits as tuple of the only available and time window
     available_windows.append((start_time, end_time))
     time_windows.append((start_time, end_time))
 
-    # Get meetings - we ask for each if the user wants to add yet another
+    # Print current status
     meetings = []
+    status_message = create_status_message(time_windows, meetings)
+
+    # Get meetings - ask if we want to load it from integration first
+    prompt = "Would you like to add meetings from integrations first? "
+    prompt += f"Current status is: {status_message}."
+    if utils.get_boolean_input(prompt):
+        integration_meetings = get_meetings_from_integrations()
+        for int_meeting in integration_meetings:
+
+            # Add the new meeting to the list and the re-sort
+            meetings.append(int_meeting)
+            meetings.sort(key=lambda x: x[0])
+
+            # Alter available windows (but not time windows) based on the new meeting
+            available_windows = utils.add_new_window(int_meeting, available_windows)
+
+            # Calculate status message with each iteration
+            # so we can prompt to the user how it's changing
+            status_message = create_status_message(time_windows, meetings)
+
+    # Get meetings - we ask for each if the user wants to add yet another
     status_message = create_status_message(time_windows, meetings)
     while True:
         prompt_part = "a" if len(meetings) == 0 else "another"
@@ -140,9 +182,10 @@ def get_half_manual_input() -> str:
             after_than=meeting_start
         )
 
-        # Add the new meeting to the list
+        # Add the new meeting to the list and the re-sort
         new_meeting = (meeting_start, meeting_end)
         meetings.append(new_meeting)
+        meetings.sort(key=lambda x: x[0])
 
         # Alter available windows (but not time windows) based on the new meeting
         available_windows = utils.add_new_window(new_meeting, available_windows)
@@ -186,6 +229,55 @@ def get_half_manual_input() -> str:
         status_message = create_status_message(time_windows, meetings)
 
     return status_message
+
+
+def get_meetings_from_integrations() -> List[Tuple[datetime, datetime]]:
+    """
+        Uses integrations to get the meetings in a list
+
+        Returns:
+        The list of the time windows as the meetings, f.e. [(08:00 - 09:00), (10:00, 10:30)]
+        Overlapping is not checked or handled.
+    """
+
+    meeting_list = []
+
+    # Google calendar meetings - if it is present among the integrations and if it's enabled
+    if 'google-calendar' in config['integrations'] \
+            and config['integrations']['google-calendar']['enabled']:
+
+        print("Getting meetings from Google Calendar API...")
+
+        # Get meetings
+        google_meetings = google_calendar.get_meetings(
+            config['integrations']['google-calendar']['credentials']
+        )
+
+        # Parse meetings
+        meeting_list.extend(utils.parse_google_meetings(google_meetings))
+
+        print("Done!")
+
+    # Azure teams meetings - if it is present among the integrations and if it's enabled
+    if 'azure-teams' in config['integrations'] \
+            and config['integrations']['azure-teams']['enabled']:
+
+        print("Getting meetings from Azure Teams API...")
+
+        # Get meetings
+        teams_meetings = azure_teams.get_meetings(
+            config['integrations']['azure-teams']['credentials']
+        )
+
+        # Parse meetings
+        meeting_list.extend(utils.parse_teams_meetings(
+            teams_meetings,
+            config['localTimeZone']
+        ))
+
+        print("Done!")
+
+    return meeting_list
 
 
 def set_slack_status(slack_status: str) -> None:
@@ -240,27 +332,13 @@ if __name__ == '__main__':
     input_manually = False
     input_fully_manually = False
 
-    # Only ask the base questions if the input is not already done by updating
-    if not input_update:
+    # Check if the user wants to set the status fully manually (free text)
+    # or half manually (setting boundaries, meetings with fix time formats)
+    if utils.get_boolean_input("Do you want to set the status partially automatically?"):
+        status_message = get_half_manual_input()
+    else:
+        status_message = utils.get_text_input("Add the fix status message you want to set:")
 
-        # Check if the user wants to set the status manually
-        # (either fully or by asking for the boundaries, meetings)
-        if utils.get_boolean_input("Do you want to set the status manually?"):
-
-            # Check if the user wants to set the status fully manually (free text)
-            # or half manually (setting boundaries, meetings with fix time formats)
-            if utils.get_boolean_input(
-                    "Do you want to set the status FULLY manually with a free text?"):
-                status_message = utils.get_text_input("Add the fix status message you want to set:")
-            else:
-                status_message = get_half_manual_input()
-
-        # Fully automated status: boundaries are set based on time,
-        # meetings are based on config + integration
-        else:
-            raise NotImplementedError()
-
-    # TODO: Remove these
     print('')
     print("The final status message will be:")
     print(status_message)

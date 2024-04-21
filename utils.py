@@ -5,7 +5,8 @@
 import re
 
 from datetime import datetime
-from typing import List, Tuple
+from typing import Dict, List, Tuple
+from zoneinfo import ZoneInfo
 
 import file
 
@@ -272,3 +273,99 @@ def get_old_status() -> None | str:
         return old_status[2]
     else:
         return None
+
+
+def parse_google_meetings(google_meetings: List[Dict]) \
+        -> List[Tuple[datetime, datetime]]:
+    """
+        Utility function to parse meetings coming from google calendar API
+
+        Parameters:
+        google_meetings: List[Dict] - The raw meetings input from google
+
+        Returns:
+        All meetings for the current day with their start and end time.
+    """
+
+    # Initialize return list
+    return_list = []
+
+    # Return on empty list or None object
+    if not google_meetings:
+        return return_list
+
+    # Get start and end date for each meeting
+    for meeting in google_meetings:
+
+        # Get start end end dates
+        start = meeting["start"].get("dateTime", meeting["start"].get("date"))
+        end = meeting["end"].get("dateTime", meeting["end"].get("date"))
+
+        # If the times are saved with timezone, we cut it
+        start = start.split('+')[0]
+        end = end.split('+')[0]
+
+        # Convert to datetime
+        start = datetime.strptime(start, '%Y-%m-%dT%H:%M:%S')
+        end = datetime.strptime(end, '%Y-%m-%dT%H:%M:%S')
+
+        # If meeting is not for today, skip it
+        now = datetime.now()
+        if now.month != start.month or now.day != start.day:
+            continue
+
+        return_list.append((start, end))
+
+    return return_list
+
+
+def parse_teams_meetings(teams_meetings: List[Dict], time_zone: str) -> \
+        List[Tuple[datetime, datetime]]:
+    """
+        Utility function to parse meetings coming from azure teams API
+
+        Parameters:
+        teams_meetings: List[Dict] - The raw meetings input from teams
+        time_zone: str - The timezone string (f.e. 'Europe/Amsterdam'). The dates are converted
+            using the timezone since teams sends the dates in UTC.
+
+        Returns:
+        All meetings for the current day with their start and end time.
+    """
+
+    # Initialize return list
+    return_list = []
+
+    # Return on empty list or None object
+    if not teams_meetings:
+        return return_list
+
+    # Get start and end date for each meeting
+    for meeting in teams_meetings:
+
+        # Get start end end dates
+        start = meeting["start"].get("dateTime", meeting["start"].get("date"))
+        end = meeting["end"].get("dateTime", meeting["end"].get("date"))
+
+        # Cut the millisecond from the times
+        start = start.split('.')[0]
+        end = end.split('.')[0]
+
+        # Convert to datetime
+        utc = ZoneInfo('UTC')
+        start = datetime.strptime(start, '%Y-%m-%dT%H:%M:%S').replace(tzinfo=utc)
+        end = datetime.strptime(end, '%Y-%m-%dT%H:%M:%S').replace(tzinfo=utc)
+
+        # Apply timezone from param
+        param_tz = ZoneInfo(time_zone)
+        start = start.astimezone(param_tz).replace(tzinfo=None)
+        end = end.astimezone(param_tz).replace(tzinfo=None)
+
+        # If meeting is not for today, skip it
+        now = datetime.now()
+        if now.year != start.year or now.month != start.month or now.day != start.day:
+            continue
+
+        return_list.append((start, end))
+
+    return return_list

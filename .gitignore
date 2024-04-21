@@ -3,3 +3,6 @@
 
 # Config file
 config.json
+
+# Google API token file
+integrations/google_token.json
