@@ -5,4 +5,4 @@
 config.json
 
 # Google API token file
-integrations/google_token.json
+integrations/google_token*.json

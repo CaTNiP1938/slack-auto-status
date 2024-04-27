@@ -8,5 +8,28 @@
         "<add_your_slack_user_ids_here>"
     ],
     "statusEmoji": ":computer:",
-    "meetingStatusEmoji": ":calendar:"
+    "meetingStatusEmoji": ":calendar:",
+    "localTimeZone": "<add_your_timezone>",
+    "vacation": {
+        "vacationStatusEmoji": ":palm_tree:",
+        "untilDate": "<Add a date in YYYY-MM-DD in the future to set vacation>"
+    },
+    "integrations": {
+        "google-calendar": [
+            {
+                "enabled": true,
+                "credentials": {
+                    "<credentials_keys>": "<credentials_values>"
+                }
+            }
+        ],
+        "azure-teams": [
+            {
+                "enabled": true,
+                "credentials": {
+                    "<credentials_keys>": "<credentials_values>"
+                }
+            }
+        ]
+    }
 }

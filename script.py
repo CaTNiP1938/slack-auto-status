@@ -27,13 +27,11 @@ def set_configuration() -> None:
     None
     """
     global silent_output
-    global status_message
     global status_expiry_date
     global status_emoji
     global meeting_status_emoji
 
     silent_output = config.get('silentOutput', True)
-    status_message = ""
     status_expiry_date = int(
         datetime.now().replace(hour=23, minute=59, second=59).timestamp())  # Until tonight
     status_emoji = config.get('statusEmoji', ':speech_balloon:')
@@ -242,42 +240,84 @@ def get_meetings_from_integrations() -> List[Tuple[datetime, datetime]]:
 
     meeting_list = []
 
-    # Google calendar meetings - if it is present among the integrations and if it's enabled
-    if 'google-calendar' in config['integrations'] \
-            and config['integrations']['google-calendar']['enabled']:
+    # Google calendar meetings - if it is present among the integrations
+    if 'google-calendar' in config['integrations']:
 
-        print("Getting meetings from Google Calendar API...")
+        # Go through each integration
+        index = 0
+        for google_calendar_integration in config['integrations']['google-calendar']:
 
-        # Get meetings
-        google_meetings = google_calendar.get_meetings(
-            config['integrations']['google-calendar']['credentials']
-        )
+            # Only load it if it is enabled
+            if google_calendar_integration['enabled'] is True:
 
-        # Parse meetings
-        meeting_list.extend(utils.parse_google_meetings(google_meetings))
+                print(f"Getting meetings from {index+1}. Google Calendar API...")
 
-        print("Done!")
+                # Get meetings
+                google_meetings = google_calendar.get_meetings(
+                    google_calendar_integration['credentials'],
+                    index
+                )
 
-    # Azure teams meetings - if it is present among the integrations and if it's enabled
-    if 'azure-teams' in config['integrations'] \
-            and config['integrations']['azure-teams']['enabled']:
+                # Parse meetings
+                meeting_list.extend(utils.parse_google_meetings(google_meetings))
 
-        print("Getting meetings from Azure Teams API...")
+                index += 1
+                print("Done!")
 
-        # Get meetings
-        teams_meetings = azure_teams.get_meetings(
-            config['integrations']['azure-teams']['credentials']
-        )
+    # Azure teams meetings - if it is present among the integrations
+    if 'azure-teams' in config['integrations']:
 
-        # Parse meetings
-        meeting_list.extend(utils.parse_teams_meetings(
-            teams_meetings,
-            config['localTimeZone']
-        ))
+        # Go through each integration
+        index = 0
+        for azure_teams_integration in config['integrations']['azure-teams']:
 
-        print("Done!")
+            # Only load it if it is enabled
+            if azure_teams_integration['enabled'] is True:
+
+                print(f"Getting meetings from {index+1}. Azure Teams API...")
+
+                # Get meetings
+                teams_meetings = azure_teams.get_meetings(
+                    azure_teams_integration['credentials']
+                )
+
+                # Parse meetings
+                meeting_list.extend(utils.parse_teams_meetings(
+                    teams_meetings,
+                    config['localTimeZone']
+                ))
+
+                index += 1
+                print("Done!")
+
+    # Remove duplicates from list
+    meeting_list = list(dict.fromkeys(meeting_list))
 
     return meeting_list
+
+
+def get_vacation_status(until_date: datetime) -> str:
+    """
+    Produces a status message and sets certain configurations for the vacation status.
+
+    Parameters:
+    until_date: datetime - The date until the vacation lasts.
+
+    Returns:
+    The status message to be set
+    """
+
+    global status_expiry_date
+    global status_emoji
+
+    status_expiry_date = int(
+        until_date.replace(hour=23, minute=59, second=59).timestamp())  # Until last day of vacation
+    status_emoji = config['vacation'].get('statusEmoji', ':palm_tree:')
+
+    # Get next day to be clear in the status when thevacation ends
+    next_day = until_date + timedelta(days=1)
+
+    return f"On vacation. Will be back on {next_day.month}/{next_day.day}"
 
 
 def set_slack_status(slack_status: str) -> None:
@@ -328,16 +368,29 @@ if __name__ == '__main__':
     config = file.read_configuration()
     set_configuration()
 
-    # Set base value for decisions
-    input_manually = False
-    input_fully_manually = False
+    # Check if vacation is supposed to be set based on the configuration
+    vacation_set = False
+    if 'vacation' in config and 'untilDate' in config['vacation']:
+        vacation_until = datetime.strptime(config['vacation']['untilDate'], '%Y-%m-%d')
 
-    # Check if the user wants to set the status fully manually (free text)
-    # or half manually (setting boundaries, meetings with fix time formats)
-    if utils.get_boolean_input("Do you want to set the status partially automatically?"):
-        status_message = get_half_manual_input()
-    else:
-        status_message = utils.get_text_input("Add the fix status message you want to set:")
+        # Set vacation if it's set to the future in the config
+        if vacation_until > datetime.now():
+            print(f"Vacation set in config until {config['vacation']['untilDate']}")
+            status_message = get_vacation_status(vacation_until)
+            vacation_set = True
+
+    if not vacation_set:
+
+        # Set base value for decisions
+        input_manually = False
+        input_fully_manually = False
+
+        # Check if the user wants to set the status fully manually (free text)
+        # or half manually (setting boundaries, meetings with fix time formats)
+        if utils.get_boolean_input("Do you want to set the status partially automatically?"):
+            status_message = get_half_manual_input()
+        else:
+            status_message = utils.get_text_input("Add the fix status message you want to set:")
 
     print('')
     print("The final status message will be:")
