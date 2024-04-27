@@ -51,6 +51,24 @@ The configuration is managed by a JSON file, named `config.json`. The list of th
 
 <br>
 
+**Vacation settings:**
+* Name: `vacation`
+* Type: `dict`
+* Required: `false`
+* Value: Configuration for setting a status for vacation:
+    * **Vacation emoji:**
+        * Name: `vacationStatusEmoji`
+        * Type: `string`
+        * Required: `false`, default is `:palm_tree:`
+        * Value: The code of the Slack emoji used for the vacation status setting. This emoji will be present next to your name.
+    * **Vacation until date:**
+        * Name: `untilDate`
+        * Type: `string (in datetime format of YYYY-MM-DD)`
+        * Required: `false`
+        * Value: Represents the last day of the vacation. If the date is in the future, the meeting loading logic is skipped, and a status message is set with the vacation emoji and text. The status is deleted on the next day of the until date. 
+
+<br>
+
 **Timezone to use:**
 * Name: `localTimeZone`
 * Type: `string`
@@ -71,7 +89,7 @@ The configuration is managed by a JSON file, named `config.json`. The list of th
     * Name: **Name of the integration** (f.e. google_calendar)
     * Type: `dict[<key_name>, <key_value>]`
     * Required: `true`
-    * Value: Contains two key-value pairs related to that specific integration:
+    * Value: Contains a list of two key-value pairs related to that specific integration:
         * **Is enabled:**
             * Name: `is_enabled`
             * Type: `boolean`
@@ -127,7 +145,7 @@ To integrate with google calendar API, and get the calendar events, you need to 
     - Click Create. The OAuth client created screen appears, showing your new Client ID and Client secret.
     - Click OK. The newly created credential appears under OAuth 2.0 Client IDs.
     - Save the downloaded JSON file temporarily as credentials.json.
-    - Copy the contents into the `config.json` file, for the **integrations** > **google-calendar** > **credentials** key's value.
+    - Copy the contents into the `config.json` file, for the **integrations** > **google-calendar** > **credentials** list.
     - You also need to set the `enabled` field for the google-calendar integration in the config.
 5. If you enable the google calendar integration, every time the meetings are chosen to be loaded from there, a browser tab will open to authenticate the user.
 
@@ -146,7 +164,7 @@ To integrate with azure teams API, and get calendar events, you need to set up a
 5. From the left side menu bar, now select **API permissions**. Configure the permissions so that two are present, both are **Microsoft Graph - Delegated permissions**:
     - Calendar.ReadBasic
     - User.Read
-6. The app is now ready. Next, go to the **Overview** section of your app, and copy the client and tenant id into the `config.json` file, so the under **integrations** > **azure-teams** > **credentials**, the JSON structure looks like this:
+6. The app is now ready. Next, go to the **Overview** section of your app, and copy the client and tenant id into the `config.json` file, into the **integrations** > **azure-teams** > **credentials** list, the JSON structure looks like this:
 
 ```sh
     "client_id": <Application (client) ID - from overview>,
