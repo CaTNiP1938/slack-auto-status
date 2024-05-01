@@ -317,7 +317,7 @@ def get_vacation_status(until_date: datetime) -> str:
     # Get next day to be clear in the status when thevacation ends
     next_day = until_date + timedelta(days=1)
 
-    return f"On vacation. Will be back on {next_day.month}/{next_day.day}"
+    return f"On vacation. Will be back on {next_day.strftime('%m')}/{next_day.strftime('%d')}"
 
 
 def set_slack_status(slack_status: str) -> None:
