@@ -3,6 +3,7 @@ import os.path
 
 from typing import Dict, List
 
+import google
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -41,7 +42,13 @@ def get_meetings(config_credentials: Dict, index: int) -> List[Dict]:
     # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+            try:
+                creds.refresh(Request())
+            except google.auth.exceptions.RefreshError:
+                flow = InstalledAppFlow.from_client_config(
+                    config_credentials, SCOPES
+                )
+                creds = flow.run_local_server(port=0)
         else:
             flow = InstalledAppFlow.from_client_config(
                 config_credentials, SCOPES

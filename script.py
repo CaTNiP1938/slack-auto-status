@@ -105,13 +105,13 @@ def get_half_manual_input() -> str:
 
         # Round to next 15 minutes
         now = datetime.now()
-        if now.minute > 0 and now.minute <= 15:
+        if now.minute >= 0 and now.minute <= 15:
             start_time = now.replace(minute=15)
         elif now.minute > 15 and now.minute <= 30:
             start_time = now.replace(minute=30)
         elif now.minute > 30 and now.minute <= 45:
             start_time = now.replace(minute=45)
-        elif now.minute > 45 or now.minute == 0:
+        elif now.minute > 45:
             start_time = now.replace(minute=0) + timedelta(hours=1)
         else:
             raise Exception(f"Unknown case for minute: {now.minute}")
