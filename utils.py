@@ -306,8 +306,15 @@ def parse_google_meetings(google_meetings: List[Dict]) \
         end = end.split('+')[0]
 
         # Convert to datetime
-        start = datetime.strptime(start, '%Y-%m-%dT%H:%M:%S')
-        end = datetime.strptime(end, '%Y-%m-%dT%H:%M:%S')
+        try:
+            start = datetime.strptime(start, '%Y-%m-%dT%H:%M:%S')
+        except ValueError:
+            start = datetime.strptime(start, '%Y-%m-%d')
+
+        try:
+            end = datetime.strptime(end, '%Y-%m-%dT%H:%M:%S')
+        except ValueError:
+            end = datetime.strptime(end, '%Y-%m-%d')
 
         # If meeting is not for today, skip it
         now = datetime.now()
